@@ -1,9 +1,6 @@
-use std::path::Path;
 use std::path::PathBuf;
 use std::io::Read;
 use std::collections::HashMap;
-use std::any::type_name_of_val;
-use std::convert::TryInto;
 use std::fs;
 use std::io::Write;
 use clap::Parser;
@@ -17,9 +14,13 @@ struct Cli {
     #[arg(short = 'i', long = "input")]
     input: std::path::PathBuf,
 
-    /// output: Desired path to output TSV
+    /// Desired path to output file
     #[arg(short = 'o', long = "output")]
     output: std::path::PathBuf,
+
+    /// Output file format; one of "tsv" or "text"
+    #[arg(long, default_value = "tsv")]
+    outfmt: String,
 }
 
 #[derive(Debug)]
@@ -35,6 +36,26 @@ struct QCReport {
     l50: usize,
     l75: usize,
     nperkbp: f64,
+}
+
+fn check_infile(inpath: &PathBuf) {
+    if !inpath.exists() {
+        eprintln!("Error: File does not exist: {:?}.", inpath);
+        std::process::exit(1)
+    }
+}
+
+fn check_outfile(outpath: &PathBuf, outfmt: &String) {
+    if outpath.exists() {
+        eprintln!("Error: File already exists: {:?}.", outpath);
+        std::process::exit(1)
+    }
+
+    let good_outfmt = vec![String::from("tsv"), String::from("text")];
+    if !good_outfmt.contains(outfmt) {
+        eprintln!("Error: {:?} is not a supported output format (hint: change to 'tsv' or 'text').", outfmt);
+        std::process::exit(1)
+    }
 }
 
 fn get_genome_stats(contiglens: &HashMap<String, usize>, glen: usize) -> HashMap<String, usize> {
@@ -108,16 +129,6 @@ fn get_qc<R: Read>(fname: String, gname: String, mut contigs: seq_io::fasta::Rea
 
     let genome_stats = get_genome_stats(&contiglens, glen);
 
-    println!("Number of contigs: {}", ncontigs);
-    println!("Longest contig: {} bp", maxcontig);
-    println!("Total genome length: {} bp", glen);
-    println!("GC content: {:.2}%", (gc as f64 / glen as f64) * 100 as f64);
-    println!("N50: {} bp", genome_stats.get("N50").unwrap());
-    println!("N75: {} bp", genome_stats.get("N75").unwrap());
-    println!("L50: {} contigs", genome_stats.get("L50").unwrap());
-    println!("L75: {} contigs", genome_stats.get("L75").unwrap());
-    println!("Number of Ns: {}", bpcounts.get("N").unwrap());
-
     let final_stats = QCReport {
         fname: fname,
         gname: gname,
@@ -134,31 +145,40 @@ fn get_qc<R: Read>(fname: String, gname: String, mut contigs: seq_io::fasta::Rea
     final_stats
 }
 
-fn print_final_report(final_stats: QCReport, outpath: &PathBuf) -> std::io::Result<()> {
+fn print_final_report(final_stats: QCReport, outpath: &PathBuf, outfmt: &String) -> std::io::Result<()> {
+
     let header = vec!["#filename", "prefix",
-                                 "N_contigs", "Max_contig_length_bp",
-                                 "Genome_length_bp", "GC_percent",
-                                 "N50", "N75",
-                                 "L50", "L75",
-                                 "Ns_per_100Kb"];
+                                "N_contigs", "Max_contig_length_bp",
+                                "Genome_length_bp", "GC_percent",
+                                "N50", "N75",
+                                "L50", "L75",
+                                "Ns_per_100Kb"];
 
     let final_line = vec![final_stats.fname, final_stats.gname,
-                                          final_stats.ncontigs.to_string(),
-                                          final_stats.maxcontig.to_string(),
-                                          final_stats.glen.to_string(),
-                                          format!("{:.2}", final_stats.gc),
-                                          final_stats.n50.to_string(),
-                                          final_stats.n75.to_string(),
-                                          final_stats.l50.to_string(),
-                                          final_stats.l75.to_string(),
-                                          format!("{:.2}", final_stats.nperkbp)];
-    
+                                        final_stats.ncontigs.to_string(),
+                                        final_stats.maxcontig.to_string(),
+                                        final_stats.glen.to_string(),
+                                        format!("{:.2}", final_stats.gc),
+                                        final_stats.n50.to_string(),
+                                        final_stats.n75.to_string(),
+                                        final_stats.l50.to_string(),
+                                        final_stats.l75.to_string(),
+                                        format!("{:.2}", final_stats.nperkbp)];
+
     let mut outfile = fs::OpenOptions::new()
                                 .create(true).append(true)
                                 .open(&outpath)?;
-    outfile.write_all(header.join("\t").as_bytes())?;
-    outfile.write_all("\n".as_bytes())?;
-    outfile.write_all(final_line.join("\t").as_bytes())?;
+                
+    if outfmt == "tsv" {
+        outfile.write_all(header.join("\t").as_bytes())?;
+        outfile.write_all("\n".as_bytes())?;
+        outfile.write_all(final_line.join("\t").as_bytes())?;
+    }
+    else if outfmt == "text" {
+        for (i, j) in header.iter().zip(final_line.iter()) {
+            write!(&mut outfile, "{}: {} \n", i, j)?;
+        }
+    }
 
     Ok(())
 }
@@ -166,12 +186,21 @@ fn print_final_report(final_stats: QCReport, outpath: &PathBuf) -> std::io::Resu
 fn main() {
     let args = Cli::parse();
 
-    let mut reader = Reader::from_path(&args.input).unwrap();
+    check_infile(&args.input);
+
+    let reader = Reader::from_path(&args.input).unwrap();
     let fname = String::from(args.input.file_name().unwrap().to_str().unwrap());
     let gname = String::from(args.input.file_stem().unwrap().to_str().unwrap());
     let outpath = &args.output;
+    let outfmt = &args.outfmt;
     
     let final_stats = get_qc(fname, gname, reader);
-    
-    print_final_report(final_stats, outpath);
+
+    check_outfile(outpath, outfmt);
+    if let Ok(_) = print_final_report(final_stats, outpath, outfmt) {
+    }
+    else {
+        eprintln!("Error: Cannot write to output file: {:?}.", outpath);
+        std::process::exit(1)
+    }
 }
