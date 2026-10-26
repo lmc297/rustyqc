@@ -1,6 +1,13 @@
 # rustyqc
 A tool for calculating minimal QC metrics for assembled genomes, written in Rust
 
+## Installation
+
+To install `rustyqc`, run the following command in your terminal:
+```
+cargo install --git https://github.com/lmc297/rustyqc
+```
+
 ## Usage
 ```
 Usage: rustyqc [OPTIONS] --input <INPUT> --output <OUTPUT>
