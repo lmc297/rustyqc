@@ -42,4 +42,11 @@ Options:
 
 ## ✅ Validation
 
-QC metrics for 41,777 prokaryotic genomes (i.e., species representative genomes from the [proGenomes3 database](https://academic.oup.com/nar/article/51/D1/D760/6835361)) were calculated using `rustyqc` v0.2.0 and [QUAST](https://github.com/ablab/quast) v5.2.0. All `rustyqc` QC metrics were identical to their QUAST counterparts.
+QC metrics for 41,777 prokaryotic genomes (i.e., species representative genomes from the [proGenomes3 database](https://academic.oup.com/nar/article/51/D1/D760/6835361)) were calculated using `rustyqc` v0.2.0 and [QUAST](https://github.com/ablab/quast) v5.2.0. All `rustyqc` QC metrics were identical to their QUAST counterparts (you can see for yourself [here](https://doi.org/10.5281/zenodo.23697667)!).
+
+## ⭐ Citation
+
+Enjoying `rustyqc`? Feel free to cite my little side-quest / Rust practice session:
+
+> Laura Carroll. rustyqc: a tool for calculating minimal QC metrics for assembled genomes, written in Rust, version 0.2.0. https://github.com/lmc297/rustyqc. doi: https://doi.org/10.5281/zenodo.23697667. 
+
