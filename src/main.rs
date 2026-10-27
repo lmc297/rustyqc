@@ -32,9 +32,9 @@ struct QCReport {
     glen: usize,
     gc: f64,
     n50: usize,
-    n75: usize,
+    n90: usize,
     l50: usize,
-    l75: usize,
+    l90: usize,
     nperkbp: f64,
 }
 
@@ -61,7 +61,7 @@ fn check_outfile(outpath: &PathBuf, outfmt: &String) {
 fn get_genome_stats(contiglens: &HashMap<String, usize>, glen: usize) -> HashMap<String, usize> {
     let mut genome_stats = HashMap::new();
     let n50_thresh = (glen as f64) * 0.5;
-    let n75_thresh = (glen as f64) * 0.75;
+    let n90_thresh = (glen as f64) * 0.90;
     
     let mut len_vec: Vec<(&String, &usize)> = contiglens.iter().collect();
     len_vec.sort_by(|a, b| b.1.cmp(a.1));
@@ -75,9 +75,9 @@ fn get_genome_stats(contiglens: &HashMap<String, usize>, glen: usize) -> HashMap
             genome_stats.insert(String::from("N50"), *i.1);
             genome_stats.insert(String::from("L50"), l_counter);
         }
-        if (n_counter as f64) >= n75_thresh && !genome_stats.contains_key("N75") {
-            genome_stats.insert(String::from("N75"), *i.1);
-            genome_stats.insert(String::from("L75"), l_counter);
+        if (n_counter as f64) >= n90_thresh && !genome_stats.contains_key("N90") {
+            genome_stats.insert(String::from("N90"), *i.1);
+            genome_stats.insert(String::from("L90"), l_counter);
         }
     }
     genome_stats
@@ -135,11 +135,11 @@ fn get_qc<R: Read>(fname: String, gname: String, mut contigs: seq_io::fasta::Rea
         ncontigs: ncontigs,
         maxcontig: *maxcontig,
         glen: glen,
-        gc: (gc as f64 / glen as f64) * 100 as f64,
+        gc: (gc as f64 / (glen as f64 - *bpcounts.get("N").unwrap() as f64)) * 100 as f64,
         n50: *genome_stats.get("N50").unwrap(),
-        n75: *genome_stats.get("N75").unwrap(),
+        n90: *genome_stats.get("N90").unwrap(),
         l50: *genome_stats.get("L50").unwrap(),
-        l75: *genome_stats.get("L75").unwrap(),
+        l90: *genome_stats.get("L90").unwrap(),
         nperkbp: (*bpcounts.get("N").unwrap() as f64) / (glen as f64) * 100000.0,
     };
     final_stats
@@ -150,8 +150,8 @@ fn print_final_report(final_stats: QCReport, outpath: &PathBuf, outfmt: &String)
     let header = vec!["#filename", "prefix",
                                 "N_contigs", "Max_contig_length_bp",
                                 "Genome_length_bp", "GC_percent",
-                                "N50", "N75",
-                                "L50", "L75",
+                                "N50", "N90",
+                                "L50", "L90",
                                 "Ns_per_100Kb"];
 
     let final_line = vec![final_stats.fname, final_stats.gname,
@@ -160,9 +160,9 @@ fn print_final_report(final_stats: QCReport, outpath: &PathBuf, outfmt: &String)
                                         final_stats.glen.to_string(),
                                         format!("{:.2}", final_stats.gc),
                                         final_stats.n50.to_string(),
-                                        final_stats.n75.to_string(),
+                                        final_stats.n90.to_string(),
                                         final_stats.l50.to_string(),
-                                        final_stats.l75.to_string(),
+                                        final_stats.l90.to_string(),
                                         format!("{:.2}", final_stats.nperkbp)];
 
     let mut outfile = fs::OpenOptions::new()
