@@ -1,0 +1,31 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: rustyqc
+message: >-
+  A tool for calculating minimal QC metrics for assembled
+  genomes, written in Rust
+type: software
+authors:
+  - given-names: Laura
+    family-names: Carroll
+    email: laura.carroll@umu.se
+    affiliation: Umeå University
+    orcid: 'https://orcid.org/0000-0002-3677-0192'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23697667
+  - type: url
+    value: 'https://github.com/lmc297/rustyqc'
+repository-code: 'https://github.com/lmc297/rustyqc'
+abstract: >-
+  A tool for calculating minimal QC metrics for assembled
+  genomes, written in Rust.
+keywords:
+  - genome
+  - quality
+  - QC
+  - QUAST
+  - N50
+  - L50
